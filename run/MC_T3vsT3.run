@@ -1,0 +1,7 @@
+Needs["test`","/usr/people/abs/singaram/scripts/mathematica/packages/MC_T3vsT3.m"];
+Needs["GraphUtilities`"];
+
+Do[
+MCBindAndMoveAndTransfer["/usr/people/abs/singaram/data/t3_capsid/t3dimer.list","/usr/people/abs/singaram/data/t3_capsid/t3dimer.list",42,48,100,10000,1000,-2.5];
+,{i,1,20}];
+Exit[]

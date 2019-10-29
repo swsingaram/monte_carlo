@@ -1,0 +1,5 @@
+Needs["MonteCarlo`","~/scripts/mathematica/packages/MC.m"];
+b1mat=Import["~/data/lapmats/B1.lap","Table"];
+radgy=RgGraph[b1mat];
+PutAppend[radgy,"rg.dat"];
+Exit[]

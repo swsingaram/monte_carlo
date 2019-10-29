@@ -1,0 +1,493 @@
+Needs["MonteCarlo`","/usr/people/abs/singaram/scripts/mathematica/packages/MC.m"];
+Needs["GraphUtilities`"];
+
+(*import graph*)
+dimerlist=Import["/usr/people/abs/singaram/data/t2_capsid/t2dimer.list"];
+
+
+
+occsites1={};
+occsites2={};
+occsites3={};
+occsites4={};
+occsites5={};
+occsites6={};
+occsites7={};
+occsites8={};
+epsilon=-1;
+energy=0;
+nummoves=100;
+numprot1=10;
+numprot2=12;
+numprot3=9;
+numprot4=10;
+numprot5=7;
+numprot6=11;
+numprot7=10;
+numprot8=11;
+numhops=1000;
+numjumps=100;
+numassns=100;
+
+(*Number of sites on RNA*)
+numsites=25;
+(*In this case the  total number of vertices is equal to 60 *)
+numxs=60-numsites;
+
+dimergraph1=Graph[dimerlist];
+dimergraph2=StaggerGraph[dimergraph1,60];
+dimergraph3=StaggerGraph[dimergraph2,60];
+dimergraph4=StaggerGraph[dimergraph3,60];
+dimergraph5=StaggerGraph[dimergraph4,60];
+dimergraph6=StaggerGraph[dimergraph5,60];
+dimergraph7=StaggerGraph[dimergraph6,60];
+dimergraph8=StaggerGraph[dimergraph7,60];
+
+(*remove the xs sites*)
+dimergraph1=RNAGraph[dimergraph1,{},{},numxs][[1]];
+dimergraph2=RNAGraph[dimergraph2,{},{},numxs][[1]];
+dimergraph3=RNAGraph[dimergraph3,{},{},numxs][[1]];
+dimergraph4=RNAGraph[dimergraph4,{},{},numxs][[1]];
+dimergraph5=RNAGraph[dimergraph5,{},{},numxs][[1]];
+dimergraph6=RNAGraph[dimergraph6,{},{},numxs][[1]];
+dimergraph7=RNAGraph[dimergraph7,{},{},numxs][[1]];
+dimergraph8=RNAGraph[dimergraph8,{},{},numxs][[1]];
+
+(*put things in a list because it is easier to call*)
+occsiteslist={occsites1,occsites2,occsites3,occsites4,occsites5,occsites6,occsites7,occsites8};
+numprotlist={numprot1,numprot2,numprot3,numprot4,numprot5,numprot6,numprot7,numprot8};
+dimergraphlist={dimergraph1,dimergraph2,dimergraph3,dimergraph4,dimergraph5,dimergraph6,dimergraph7,dimergraph8};
+
+
+(*add proteins and move them around*)
+Do[
+	Do[
+	addlist=MCAddGraph[dimergraphlist[[i]],occsiteslist[[i]],epsilon,energy];
+	occsites=addlist[[2]];
+	energy=addlist[[3]];
+
+	occsiteslist[[i]]=occsites;
+		Do[
+		movelist=MCMoveGraph[dimergraphlist[[i]],occsiteslist[[i]],epsilon,energy];
+		occsites=movelist[[2]];
+		energy=movelist[[3]];
+	
+		occsiteslist[[i]]=occsites;
+		,{k,1,nummoves}];
+	,{j,1,numprotlist[[i]]}];
+
+Export[StringJoin[ToString[i],"_initial.pdf"],HighlightGraph[dimergraphlist[[i]],Subgraph[dimergraphlist[[i]],occsiteslist[[i]]],GraphLayout->"SpringElectricalEmbedding"]];
+,{i,1,8}];
+
+(*associate 1 and 2 also 3 and 4*)
+
+dimer1dimer2=GraphUnion[dimergraphlist[[1]],dimergraphlist[[2]]];
+occsites12=Union[occsiteslist[[1]],occsiteslist[[2]]];
+assocsites12={};
+
+
+dimer3dimer4=GraphUnion[dimergraphlist[[3]],dimergraphlist[[4]]];
+occsites34=Union[occsiteslist[[3]],occsiteslist[[4]]];
+assocsites34={};
+
+Do[
+
+rnaassoclist=RNAAssociate[dimer1dimer2,occsites12,assocsites12,60,3,epsilon,energy];
+dimer1dimer2=rnaassoclist[[1]];
+assocsites12=rnaassoclist[[3]];
+energy=rnaassoclist[[5]];
+
+rnaassoclist=RNAAssociate[dimer3dimer4,occsites34,assocsites34,120,3,epsilon,energy];
+dimer3dimer4=rnaassoclist[[1]];
+assocsites34=rnaassoclist[[3]];
+energy=rnaassoclist[[5]];
+
+
+,{i,1,numassns}];
+
+Export["RNAdimer1.pdf",HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites12],GraphLayout->"SpringElectricalEmbedding"]];
+
+Export["RNAdimer2.pdf",HighlightGraph[dimer3dimer4,Subgraph[dimer3dimer4,occsites34],GraphLayout->"SpringElectricalEmbedding"]];
+
+
+associslandsites12={};
+associslandsites34={};
+Do[
+rnaislandassoclist=RNAIslandAssociate[dimer1dimer2,occsites12,associslandsites12,3,epsilon,energy];
+dimer1dimer2=rnaislandassoclist[[1]];
+associslandsites12=rnaislandassoclist[[3]];
+energy=rnaislandassoclist[[4]];
+
+rnaislandassoclist=RNAIslandAssociate[dimer3dimer4,occsites34,associslandsites34,3,epsilon,energy];
+dimer3dimer4=rnaislandassoclist[[1]];
+associslandsites34=rnaislandassoclist[[3]];
+energy=rnaislandassoclist[[4]];
+,{i,1,1000}];
+
+
+Export["RNAdimerisland1.pdf",HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites12],GraphLayout->"SpringElectricalEmbedding"]];
+
+Export["RNAdimerisland2.pdf",HighlightGraph[dimer3dimer4,Subgraph[dimer3dimer4,occsites34],GraphLayout->"SpringElectricalEmbedding"]];
+
+(*
+(*Allow some hopping*)
+Do[
+hoplist=MCHopGraph[dimer1dimer2,occsites12,epsilon,energy];
+occsites12=hoplist[[2]];
+energy=hoplist[[3]];
+
+hoplist=MCHopGraph[dimer3dimer4,occsites34,epsilon,energy];
+occsites34=hoplist[[2]];
+energy=hoplist[[3]];
+
+,{i,1,numhops}];
+
+Export["RNAhopdimer1.pdf",HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites12],GraphLayout->"SpringElectricalEmbedding"]];
+
+Export["RNAhopdimer2.pdf",HighlightGraph[dimer3dimer4,Subgraph[dimer3dimer4,occsites34],GraphLayout->"SpringElectricalEmbedding"]];*)
+
+
+
+
+(*
+(*now let us associate both RNA dimers*)
+dimer1dimer2dimer3dimer4=GraphUnion[dimer1dimer2,dimer3dimer4];
+occsites1234=Union[occsites12,occsites34];
+assocsites1234={};
+
+Do[
+
+rnaassoclist=RNAAssociate[dimer1dimer2dimer3dimer4,occsites1234,assocsites1234,120,3,epsilon,energy];
+dimer1dimer2dimer3dimer4=rnaassoclist[[1]];
+assocsites1234=rnaassoclist[[3]];
+energy=rnaassoclist[[5]];
+
+
+,{i,1,numassns}];
+
+Export["RNAtetramer.pdf",HighlightGraph[dimer1dimer2dimer3dimer4,Subgraph[dimer1dimer2dimer3dimer4,occsites1234],GraphLayout->"SpringElectricalEmbedding"]];
+
+
+Do[
+hoplist=MCHopGraph[dimer1dimer2dimer3dimer4,occsites1234,epsilon,energy];
+occsites1234=hoplist[[2]];
+energy=hoplist[[3]];
+
+,{i,1,numhops}];
+
+Export["RNAhoptetramer.pdf",HighlightGraph[dimer1dimer2dimer3dimer4,Subgraph[dimer1dimer2dimer3dimer4,occsites1234],GraphLayout->"SpringElectricalEmbedding"]];*)
+
+
+
+
+
+(*competition with third and fourth RNAs*)
+Do[
+
+	Do[
+
+           rnaislandassoclist=RNAIslandAssociate[dimer1dimer2,occsites12,associslandsites12,3,epsilon,energy];
+	dimer1dimer2=rnaislandassoclist[[1]];
+	associslandsites12=rnaislandassoclist[[3]];
+	energy=rnaislandassoclist[[4]];
+
+
+
+
+          movelist=MCMoveGraph[dimergraphlist[[5]],occsiteslist[[5]],epsilon,energy];
+          occsites=movelist[[2]];
+          occsiteslist[[5]]=occsites;
+          energy=movelist[[3]];
+
+
+          ,{j,1,numhops}];
+
+jumplist1=MCJumpGraph[dimergraphlist[[5]],occsiteslist[[5]],dimer1dimer2,occsites12,epsilon,energy];
+occsites12=jumplist1[[4]];
+occsites=jumplist1[[2]];
+occsiteslist[[5]]=occsites;
+energy=jumplist1[[5]];
+
+
+
+,{i,1,numjumps}];
+
+Export["RNAdimer1comp1.pdf",HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites12],GraphLayout->"SpringElectricalEmbedding"]];
+Export["RNAcomp1.pdf",HighlightGraph[dimergraphlist[[5]],Subgraph[dimergraphlist[[5]],occsiteslist[[5]]],GraphLayout->"SpringElectricalEmbedding"]];
+
+Print["Now bring in second RNA"];
+
+Do[
+	Do[
+           
+          rnaislandassoclist=RNAIslandAssociate[dimer1dimer2,occsites12,associslandsites12,3,epsilon,energy];
+	dimer1dimer2=rnaislandassoclist[[1]];
+	associslandsites12=rnaislandassoclist[[3]];
+	energy=rnaislandassoclist[[4]];
+
+          movelist=MCMoveGraph[dimergraphlist[[6]],occsiteslist[[6]],epsilon,energy];
+          occsites=movelist[[2]];
+          occsiteslist[[6]]=occsites;
+          energy=movelist[[3]];
+
+
+          ,{j,1,numhops}];
+
+jumplist1=MCJumpGraph[dimer1dimer2,occsites12,dimergraphlist[[6]],occsiteslist[[6]],epsilon,energy];
+occsites12=jumplist1[[2]];
+occsites=jumplist1[[4]];
+occsiteslist[[6]]=occsites;
+energy=jumplist1[[5]];
+
+
+,{i,1,numjumps}];
+
+Export["RNAdimer1comp2.pdf",HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites12],GraphLayout->"SpringElectricalEmbedding"]];
+Export["RNAcomp2.pdf",HighlightGraph[dimergraphlist[[6]],Subgraph[dimergraphlist[[6]],occsiteslist[[6]]],GraphLayout->"SpringElectricalEmbedding"]];
+
+(*
+(*now we do the same thing for the other RNA dimer*)
+
+(*competition with seventh and eighth RNAs*)
+Do[
+
+	Do[
+
+           rnaislandassoclist=RNAIslandAssociate[dimer3dimer4,occsites34,associslandsites34,3,epsilon,energy];
+	dimer3dimer4=rnaislandassoclist[[1]];
+	associslandsites34=rnaislandassoclist[[3]];
+	energy=rnaislandassoclist[[4]];
+
+
+
+
+          movelist=MCMoveGraph[dimergraphlist[[7]],occsiteslist[[7]],epsilon,energy];
+          occsites=movelist[[2]];
+          occsiteslist[[7]]=occsites;
+          energy=movelist[[3]];
+
+
+          ,{j,1,numhops}];
+
+jumplist1=MCJumpGraph[dimergraphlist[[7]],occsiteslist[[7]],dimer3dimer4,occsites34,epsilon,energy];
+occsites34=jumplist1[[4]];
+occsites=jumplist1[[2]];
+occsiteslist[[7]]=occsites;
+energy=jumplist1[[5]];
+
+Print[{Length[occsites34],Length[occsites]}];
+
+
+,{i,1,numjumps}];
+
+Export["RNAdimer2comp1.pdf",HighlightGraph[dimer3dimer4,Subgraph[dimer3dimer4,occsites34],GraphLayout->"SpringElectricalEmbedding"]];
+Export["RNAcomp1.pdf",HighlightGraph[dimergraphlist[[5]],Subgraph[dimergraphlist[[5]],occsiteslist[[5]]],GraphLayout->"SpringElectricalEmbedding"]];
+
+Print["Now bring in second RNA"];
+
+Do[
+	Do[
+           
+          rnaislandassoclist=RNAIslandAssociate[dimer1dimer2,occsites12,associslandsites12,3,epsilon,energy];
+	dimer1dimer2=rnaislandassoclist[[1]];
+	associslandsites12=rnaislandassoclist[[3]];
+	energy=rnaislandassoclist[[4]];
+
+          movelist=MCMoveGraph[dimergraphlist[[6]],occsiteslist[[6]],epsilon,energy];
+          occsites=movelist[[2]];
+          occsiteslist[[6]]=occsites;
+          energy=movelist[[3]];
+
+
+          ,{j,1,numhops}];
+
+jumplist1=MCJumpGraph[dimer1dimer2,occsites12,dimergraphlist[[6]],occsiteslist[[6]],epsilon,energy];
+occsites12=jumplist1[[2]];
+occsites=jumplist1[[4]];
+occsiteslist[[6]]=occsites;
+energy=jumplist1[[5]];
+
+Print[{Length[occsites12],Length[occsites]}];
+
+,{i,1,numjumps}];
+
+Export["RNAdimer1comp2.pdf",HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites12],GraphLayout->"SpringElectricalEmbedding"]];
+Export["RNAcomp2.pdf",HighlightGraph[dimergraphlist[[6]],Subgraph[dimergraphlist[[6]],occsiteslist[[6]]],GraphLayout->"SpringElectricalEmbedding"]];
+
+
+*)
+
+
+
+
+(*
+
+
+
+
+
+
+(*Now we will do a competition with third RNA*)
+Do[
+
+movelist=MCMoveGraph[dimer1dimer2,occsites,nummoves,epsilon,energy];
+occsites=movelist[[2]];
+energy=movelist[[3]];
+
+movelist=MCMoveGraph[dimergraph3,occsites3,nummoves,epsilon,energy];
+occsites3=movelist[[2]];
+energy=movelist[[3]];
+
+jumplist=MCJumpGraph[dimer1dimer2,occsites,dimergraph3,occsites3,epsilon,energy];
+
+occsites=jumplist[[2]];
+occsites3=jumplist[[4]];
+
+,{j,1,numjumps}];
+
+Export[StringJoin[ToString[5],".pdf"],HighlightGraph[dimer1dimer2,Subgraph[dimer1dimer2,occsites],GraphLayout->"SpringElectricalEmbedding"]];
+Export[StringJoin[ToString[5.5],".pdf"],HighlightGraph[dimergraph3,Subgraph[dimergraph3,occsites3],GraphLayout->"SpringElectricalEmbedding"]];
+
+(*Now bring in the other dimer of RNAs*)
+dimergraph4=StaggerGraph[dimer1dimer2,120];
+
+Do[
+
+addlist=MCAddGraph[dimergraph4,occsites4,epsilon,energy];
+occsites4=addlist[[2]];
+energy=addlist[[3]];
+
+
+movelist=MCMoveGraph[dimergraph4,occsites4,nummoves,epsilon,energy];
+occsites4=movelist[[2]];
+energy=movelist[[3]];
+
+,{i,1,numprot4}];
+
+Export[StringJoin[ToString[6],".pdf"],HighlightGraph[dimergraph4,Subgraph[dimergraph4,occsites4],GraphLayout->"SpringElectricalEmbedding"]];
+
+(*Now associate these guys*)
+dimer1dimer2dimer3dimer4=GraphUnion[dimer1dimer2,dimergraph4];
+occsitestet=Join[occsites,occsites4];
+
+assocsites={};
+
+Do[
+rnaassoclist=RNAAssociate[dimer1dimer2dimer3dimer4,occsitestet,assocsites,120,3,-2,energy];
+dimer1dimer2dimer3dimer4=rnaassoclist[[1]];
+assocsites=rnaassoclist[[3]];
+energy=rnaassoclist[[5]];
+
+,{i,1,15}];
+
+ccomponents=ConnectedComponents[dimer1dimer2dimer3dimer4];
+Do[
+Print[Length[i]];
+
+,{i,ccomponents}];
+
+Export[StringJoin[ToString[7],".pdf"],HighlightGraph[dimer1dimer2dimer3dimer4,Subgraph[dimer1dimer2dimer3dimer4,occsitestet],GraphLayout->"SpringElectricalEmbedding"]];
+
+
+dimergraphT3=Graph[Import["/usr/people/abs/singaram/data/t3_capsid/t3dimer.list"]];
+occsitesT3={};
+
+Do[
+(*
+movelist=MCMoveGraph[dimer1dimer2dimer3dimer4,occsitestet,nummoves,epsilon,energy];
+occsites=movelist[[2]];
+energy=movelist[[3]];
+
+movelist=MCMoveGraph[dimergraphT3,occsitesT3,nummoves,epsilon,energy];
+occsitesT3=movelist[[2]];
+energy=movelist[[3]];*)
+
+jumplist=MCJumpGraph[dimer1dimer2dimer3dimer4,occsitestet,dimergraphT3,occsitesT3,epsilon,energy];
+
+occsitestet=jumplist[[2]];
+occsitesT3=jumplist[[4]];
+
+,{j,1,numjumps*10}];
+Print[Length[occsitestet]];
+Print[Length[occsitesT3]];
+
+Export[StringJoin[ToString[8],".pdf"],HighlightGraph[dimergraphT3,Subgraph[dimergraphT3,occsitesT3],GraphLayout->"SpringElectricalEmbedding"]];
+*)
+(*
+Export[StringJoin[ToString[1],"_graph.pdf"],HighlightGraph[dimergraph1,Subgraph[dimergraph1,occsites1],GraphLayout->"SpringElectricalEmbedding"]];
+raisepHlist=RaisepH[dimergraph1,occsites1,{},{},20];
+
+
+dimergraph1=raisepHlist[[1]];
+vdel=raisepHlist[[2]];
+edel=raisepHlist[[3]];
+
+
+Export[StringJoin[ToString[2],"_graph.pdf"],HighlightGraph[dimergraph1,Subgraph[dimergraph1,occsites1],GraphLayout->"SpringElectricalEmbedding"]];
+
+lowerpHlist=LowerpH[dimergraph1,vdel,edel,10];
+
+dimergraph1=lowerpHlist[[1]];
+vdel=lowerpHlist[[2]];
+edel=lowerpHlist[[3]];
+
+Print[vdel];
+Print[edel];
+
+Export[StringJoin[ToString[3],"_graph.pdf"],HighlightGraph[dimergraph1,Subgraph[dimergraph1,occsites1],GraphLayout->"SpringElectricalEmbedding"]];
+raisepHlist=RaisepH[dimergraph1,occsites1,vdel,edel,5];
+
+
+dimergraph1=raisepHlist[[1]];
+vdel=raisepHlist[[2]];
+edel=raisepHlist[[3]];
+
+
+Export[StringJoin[ToString[4],"_graph.pdf"],HighlightGraph[dimergraph1,Subgraph[dimergraph1,occsites1],GraphLayout->"SpringElectricalEmbedding"]];
+
+lowerpHlist=LowerpH[dimergraph1,vdel,edel,1];
+
+dimergraph1=lowerpHlist[[1]];
+
+Export[StringJoin[ToString[5],"_graph.pdf"],HighlightGraph[dimergraph1,Subgraph[dimergraph1,occsites1],GraphLayout->"SpringElectricalEmbedding"]];
+*)
+(*Do[
+
+addlist=MCAddGraph[dimergraph2,occsites2,epsilon,energy];
+occsites2=addlist[[2]];
+energy=addlist[[3]];
+
+movelist=MCMoveGraph[dimergraph2,occsites2,nummoves,epsilon,energy];
+occsites2=movelist[[2]];
+energy=movelist[[3]];
+
+,{i,1,numprot2}];
+
+Do[
+
+movelist=MCMoveGraph[dimergraph1,occsites1,nummoves,epsilon,energy];
+occsites1=movelist[[2]];
+energy=movelist[[3]];
+
+movelist=MCMoveGraph[dimergraph2,occsites2,nummoves,epsilon,energy];
+occsites2=movelist[[2]];
+energy=movelist[[3]];
+
+jumplist=MCJumpGraph[dimergraph1,occsites1,dimergraph2,occsites2,epsilon,energy];
+
+occsites1=jumplist[[2]];
+occsites2=jumplist[[4]];
+
+Print[j];
+,{j,1,numjumps}];
+
+prottrans=numprot1-Length[occsites1];
+
+Print[prottrans];
+
+Export[StringJoin[ToString[1],"_graph.pdf"],HighlightGraph[dimergraph1,Subgraph[dimergraph1,occsites1],GraphLayout->"SpringElectricalEmbedding"]];
+Export[StringJoin[ToString[2],"_graph.pdf"],HighlightGraph[dimergraph2,Subgraph[dimergraph2,occsites2],GraphLayout->"SpringElectricalEmbedding"]];
+
+*)
+
+Exit[]

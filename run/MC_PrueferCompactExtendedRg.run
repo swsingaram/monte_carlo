@@ -1,0 +1,92 @@
+Needs["GraphUtilities`"];
+Needs["Combinatorica`"];
+(*No acceptace probability necessary!*)
+
+(*given Pruefer code, generate the smallest tree and largest tree*)
+(*this tree is the smallest and largest for a given degree distribution*)
+(*where smallest and largest is determined by the Rg of the graph via Kramer*)
+
+pseq=RandomSample[{1, 2, 2, 3, 4, 5, 6, 6, 7, 8, 9, 9, 10, 11, 11, 12, 12, 13, 14, 15, 16, 16, 17, 18, 19, 20, 21, 22, 22, 23, 24, 25, 26, 26, 27, 27, 28, 28, 29, 29, 30, 31, 31, 32, 33, 34, 35, 36}];
+(*generate graph*)
+ptree=CodeToLabeledTree[pseq];
+ptreem=AdjacencyMatrix[ptree];
+graph=AdjacencyGraph[ptreem];
+(*compute graph Rg*)
+eli=EdgeList[graph];
+eln=Length[eli];
+prodl={};
+Do[ed=Take[eli,{j}];
+   new=EdgeDelete[graph,ed];
+   {ll,rr}=WeakComponents[new];
+   pr=Length[ll]*Length[rr];
+   prodl=Append[prodl,pr];
+   , {j,eln}];
+tl=eln+1;
+tprod=Total[prodl];
+rg=N[Sqrt[tprod/(tl^2)]];
+(*steps for the smallest*) 
+Do[
+(*now permute the sequence*)
+pseq2=RandomSample[pseq];
+(*and calculate its size*)
+ptree2=CodeToLabeledTree[pseq2];
+ptreem2=AdjacencyMatrix[ptree2];
+graph2=AdjacencyGraph[ptreem2];
+(*compute graph Rg of graph2*)
+eli=EdgeList[graph2];
+eln=Length[eli];
+prodl={};
+Do[ed=Take[eli,{j}];
+   new=EdgeDelete[graph2,ed];
+   {ll,rr}=WeakComponents[new];
+   pr=Length[ll]*Length[rr];
+   prodl=Append[prodl,pr];
+   , {j,eln}];
+tl=eln+1;
+tprod=Total[prodl];
+rg2=N[Sqrt[tprod/(tl^2)]];
+
+(*now the Metropolis step for the smallest*)
+If[ rg2 < rg,
+	(*accept the move*)
+	pseq=pseq2;
+	rg=rg2;
+,
+	(*otherwise reject the move*)
+	pseq=pseq;
+];
+,{i,1,100000}];
+Print[{rg,pseq}];
+(*steps for the largest*)
+Do[
+(*now permute the sequence*)
+pseq3=RandomSample[pseq];
+(*and calculate its size*)
+ptree3=CodeToLabeledTree[pseq3];
+ptreem3=AdjacencyMatrix[ptree3];
+graph3=AdjacencyGraph[ptreem3];
+(*compute graph Rg of graph3*)
+eli=EdgeList[graph3];
+eln=Length[eli];
+prodl={};
+Do[ed=Take[eli,{j}];
+   new=EdgeDelete[graph3,ed];
+   {ll,rr}=WeakComponents[new];
+   pr=Length[ll]*Length[rr];
+   prodl=Append[prodl,pr];
+   , {j,eln}];
+tl=eln+1;
+tprod=Total[prodl];
+rg3=N[Sqrt[tprod/(tl^2)]];
+
+(*now the Metropolis step for the largest*)
+If[ rg3 > rg,
+	(*accept the move*)
+	pseq=pseq3;
+	rg=rg3;
+,
+	(*otherwise reject the move*)
+	pseq=pseq;
+];
+,{i,1,100000}];
+Print[{rg,pseq}];

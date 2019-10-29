@@ -1,0 +1,136 @@
+Needs["MonteCarloRosenbluthBranchedPolymer`","/home/singaram/scripts/mathematica/packages/MC_Rosenbluth-branchedpoly.m"];
+(*import B1-1500 nt or any laplacian matrix which you get from RAGs*)
+rnaadjmat=Import["~/data/tree-graph_models/lapmats/B1_1500.lap","Table"];
+rnaasgraph=AdjacencyGraph[rnaadjmat];
+numsites=Length[VertexList[rnaasgraph]];
+
+(*let us try to grow a branched polymer*)
+(*number of cp*)
+cp=0;
+f=cp/numsites;
+NumOcc=numsites*f;
+NumUnOcc=numsites*(1-f);
+CPRNAratio=N[f];
+(*create an adjacency matrix of the vertices on the frontier*)
+FrontMatrix=ConstantArray[0,{numsites,numsites}];
+epsilon=-3;
+(*number of configurations*)
+numruns=5;
+(*initialize while loop*)
+i=1;
+While[i <= numruns,
+
+
+	(*generate a number between 0 and 1*)
+	r=RandomReal[];
+	Energy=0;
+
+
+
+	If[r < CPRNAratio,
+		(*randomly selected an occupied site*)
+		grablist=GrabSites[NumOcc,NumUnOcc,1];
+		NumOcc=grablist[[1]];
+		NumUnOcc=grablist[[2]];
+		(*initialize coordinates*)
+		PolyCoors={{{0,0},1}};
+		f=N[NumOcc/(NumOcc+NumUnOcc)];
+
+		,
+
+		(*randomly selected an unoccupied site*)	
+		grablist=GrabSites[NumOcc,NumUnOcc,5];
+		NumOcc=grablist[[1]];
+		NumUnOcc=grablist[[2]];
+		(*initialize coordinates*)
+		PolyCoors={{{0,0},0}};
+		f=N[NumOcc/(NumOcc+NumUnOcc)];
+
+	];
+
+	Steps=NumOcc+NumUnOcc;
+	RBFactor=1;
+	(*which vertices do we need to add to our partially grown graph*)
+	NNlist=Frontier[rnaasgraph,PolyCoors,1];
+	
+
+
+	Do[
+	    (*place ones in front matrix indicating which vertices need to be added to the partially grown graph*)
+	    FrontMatrix[[1,k]]=1;
+		,{k,NNlist}];
+
+	Do[
+	NNlist={};
+	(*keep track of the vertex index*)
+
+	VertIndex=j+1;
+	(*this vertex is for sure a member of the frontier because it has not been added yet*)
+	(*we need to know which vertex, from the vertices we have alredy added, to add to*)
+	(*it is easy to figure this out from searching for the "1" in the column of Frontmatrix*)
+
+	Col=Take[FrontMatrix,All,{VertIndex}];
+	(*now the position of the "1" corresponds to which vertex this new vertex should be added*)
+	(*remember that once the new vertex is added, you will need to update the frontier matrix*)
+
+	VertStem=Position[Col,{1}][[1,1]];
+	(*vertex stem is the number/position of where the vertex should be added, you can get its coordinates from PolyCoors*)
+	
+	(*get the vertex coordinate corresponding to the VertStem*)
+	LastVertCoor=PolyCoors[[VertStem,1]];
+
+	(*calculate list of weights*)
+	LOW=ListOfWeights[LastVertCoor,PolyCoors,f,epsilon];
+
+	(*check if LOW has a 0 in every position, this means the polymer got stuck*)
+	If[Total[N[LOW]] == 0,
+		(*got stuck*)
+		(*return empy polycoors and 0 for rosenbluth factor*)
+		PolyCoors={};
+		RBFactor=0;
+		Return[{PolyCoors,RBFactor}];
+	  ];
+
+(*select an outcome: specify posn and occupancy state*)
+PosnState=ConfigSelect[LOW];
+
+(*at this point we can add a new coordinate and occupancy to PolyCoors, as well as update NumOcc,
+NumUnOcc*)
+GrowList=Grow[PolyCoors,PosnState,LastVertCoor,LOW,RBFactor,f];
+
+(*update polymer coordinates*)
+PolyCoors=GrowList[[1]];
+
+(*the vertex has been added, so we will need to update the Frontier matrix*)
+(*FrontMatrix[[VertStem,VertIndex]]=0;*)
+(*now get the frontier vertices for the vertex we just added*)
+(*only update the matrix if there are frontier vertices to add*)
+NNlist=Frontier[rnaasgraph,PolyCoors,VertIndex];
+
+     If[ Length[NNlist] > 0,
+	Do[
+	FrontMatrix[[VertIndex,k]]=1;
+	 ,{k,NNlist}];
+       ];
+
+(*update rosenbluth factor*)
+RBFactor=GrowList[[3]];
+(*update energy*)
+DelE=GrowList[[4]];
+Energy=Energy+DelE;
+(*update NumOcc, NumUnOcc*)
+grablist=GrabSites[NumOcc,NumUnOcc,PosnState];
+NumOcc=grablist[[1]];
+NumUnOcc=grablist[[2]];
+(*update fraction of occupied sites*)
+If[ (NumOcc+NumUnOcc) != 0,
+f=N[NumOcc/(NumOcc+NumUnOcc)];
+   ];
+	,{j,1,Steps}];
+(*start a new iteration*)
+i=i+1;
+Print[VertIndex];
+];
+
+
+Exit[]

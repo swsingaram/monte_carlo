@@ -1,0 +1,56 @@
+Needs["GraphUtilities`"];
+Needs["Combinatorica`"];
+(*No acceptace probability necessary!*)
+
+(*given Pruefer code, generate the smallest tree*)
+(*this tree is the smallest for a given degree distribution*)
+(*where smallest is determined by graph diameter*)
+
+pseq=RandomSample[{2,2,2,5,6,6}];
+(*generate graph*)
+ptree=CodeToLabeledTree[pseq];
+ptreem=AdjacencyMatrix[ptree];
+graph=AdjacencyGraph[ptreem];
+(*compute graph diameter*)
+mld=GraphDiameter[graph];
+Print[mld];
+(*calculate the smallest graph*)
+Do[
+(*now permute the sequence*)
+pseq2=RandomSample[pseq];
+(*and calculate its size*)
+ptree2=CodeToLabeledTree[pseq2];
+ptreem2=AdjacencyMatrix[ptree2];
+mld2=GraphDiameter[AdjacencyGraph[ptreem2]];
+(*now the Metropolis step*)
+If[ mld2 < mld,
+	(*accept the move*)
+	pseq=pseq2;
+	mld=mld2;
+,
+	(*otherwise reject the move*)
+	pseq=pseq;
+];
+
+,{i,1,1000}];
+Print[mld];
+(*calculate the largest*)
+Do[
+(*now permute the sequence*)
+pseq3=RandomSample[pseq];
+(*and calculate its size*)
+ptree3=CodeToLabeledTree[pseq3];
+ptreem3=AdjacencyMatrix[ptree3];
+mld3=GraphDiameter[AdjacencyGraph[ptreem3]];
+(*now the Metropolis step*)
+If[ mld3 > mld,
+	(*accept the move*)
+	pseq=pseq3;
+	mld=mld3;
+,
+	(*otherwise reject the move*)
+	pseq=pseq;
+];
+
+,{i,1,1000}];
+Print[mld];

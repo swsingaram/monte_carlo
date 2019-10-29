@@ -1,0 +1,68 @@
+Needs["MonteCarloRosenbluth`","/home/singaram/scripts/mathematica/packages/MC_Rosenbluth.m"];
+(*initialize the number of bound protein on both RNAs*)
+numsitesRNA1=31;
+numCPRNA1=15;
+numsitesRNA2=31;
+numCPRNA2=15;
+epsilon=-1;
+PathToFile1="/home/singaram/data/rosenbluth/branched/compexp/B1500/B1500compact/";
+PathToFile2="/home/singaram/data/rosenbluth/branched/compexp/B1500/B1500extended/";
+Energy=0;
+numsteps=1000;
+
+Do[
+
+	(*path to files for RNA1*)
+	rbfpathRNA1=StringJoin[PathToFile1,"RAWRBFactor_",ToString[numCPRNA1],"_",ToString[numsitesRNA1],".txt"];
+	polycoorspathRNA1=StringJoin[PathToFile1,"RAWPolyCoors_",ToString[numCPRNA1],"_",ToString[numsitesRNA1],".txt"];
+
+	(*path to files for RNA2*)
+	rbfpathRNA2=StringJoin[PathToFile2,"RAWRBFactor_",ToString[numCPRNA2],"_",ToString[numsitesRNA2],".txt"];
+	polycoorspathRNA2=StringJoin[PathToFile2,"RAWPolyCoors_",ToString[numCPRNA2],"_",ToString[numsitesRNA2],".txt"];
+	
+
+	(*pick a configuration for RNA1 at random using the Boltzmann distribution*)
+	LOWRNA1=ListOfWeightsCompExp[rbfpathRNA1];
+	posn=ConfigSelect[LOWRNA1];
+	readln=ReadList[StringJoin["!cat ",polycoorspathRNA1," | awk -v var=",ToString[posn]," 'NR==var'"]];
+	RNA1=First[readln];
+
+	(*pick a configuration for RNA2 at random using Boltzmann distribution*)
+	LOWRNA2=ListOfWeightsCompExp[rbfpathRNA2];
+	posn=ConfigSelect[LOWRNA2];
+	readln=ReadList[StringJoin["!cat ",polycoorspathRNA2," | awk -v var=",ToString[posn]," 'NR==var'"]];
+	RNA2=First[readln];
+	
+
+	(*now we are ready for the competition!!*)
+	jumplist=Jump[RNA1,RNA2,Energy,epsilon];
+
+		
+	(*at the moment this function returns the new polymer coordinates
+	 we can make it a lot faster by simply returning whether the move was
+	accepted*)
+	
+	PolyCoorsRNA1=jumplist[[1]];
+	PolyCoorsRNA2=jumplist[[2]];
+
+	Energy=jumplist[[3]];
+
+	(*now get the list of positions of the occupied sites*)
+	OccUnOccListRNA1=OccUnOccPosns[PolyCoorsRNA1];
+	OccUnOccListRNA2=OccUnOccPosns[PolyCoorsRNA2];
+	
+	OccListRNA1=OccUnOccListRNA1[[1]];
+	OccListRNA2=OccUnOccListRNA2[[1]];
+
+	(*update the number of CP on each RNA*)
+	numCPRNA1=Length[OccListRNA1];
+	numCPRNA2=Length[OccListRNA2];
+
+Print[{numCPRNA1,numCPRNA2}];
+ 
+	
+,{i,1,numsteps}];
+
+
+
+Exit[]

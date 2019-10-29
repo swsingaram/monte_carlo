@@ -1,0 +1,142 @@
+Needs["MonteCarloRosenbluthBranchedPolymer`","/home/singaram/scripts/mathematica/packages/MC_Rosenbluth-branchedpoly.m"];
+(*import B1-500 nt or any laplacian matrix which you get from RAGs*)
+rnaadjmat=Import["~/data/tree-graph_models/lapmats/B1_500modcompact.lap","Table"];
+rnaasgraph=AdjacencyGraph[rnaadjmat];
+numsites=Length[VertexList[rnaasgraph]];
+epsilon=-3;
+(*let us try to grow a branched polymer*)
+(*number of cp*)
+cp=0;
+(*Do[*)
+(*number of configurations*)
+numruns=200;
+(*initialize while loop*)
+i=1;
+Print[{cp,numsites}];
+While[i <= numruns,
+
+
+	(*generate a number between 0 and 1*)
+	r=RandomReal[];
+	Energy=0;
+	(*create an adjacency matrix of the vertices on the frontier*)
+	FrontMatrix=ConstantArray[0,{numsites,numsites}];
+	f=cp/numsites;
+	NumOcc=numsites*f;
+	NumUnOcc=numsites*(1-f);
+	CPRNAratio=N[f];
+
+	If[r < CPRNAratio,
+		(*randomly selected an occupied site*)
+		grablist=GrabSites[NumOcc,NumUnOcc,1];
+		NumOcc=grablist[[1]];
+		NumUnOcc=grablist[[2]];
+		(*initialize coordinates*)
+		PolyCoors={{{0,0},1,1}};
+		f=N[NumOcc/(NumOcc+NumUnOcc)];
+
+		,
+
+		(*randomly selected an unoccupied site*)	
+		grablist=GrabSites[NumOcc,NumUnOcc,5];
+		NumOcc=grablist[[1]];
+		NumUnOcc=grablist[[2]];
+		(*initialize coordinates*)
+		PolyCoors={{{0,0},0,1}};
+		f=N[NumOcc/(NumOcc+NumUnOcc)];
+
+	];
+
+Result=Catch[DepthFirstScan[rnaasgraph,1,{"PrevisitVertex" -> ( 
+	VertIndex=#1;
+	If[VertIndex == 1,
+	     RBFactor=1;
+	     NNlist=Frontier[rnaasgraph,PolyCoors,1];
+	    Do[
+	    (*place ones in front matrix indicating which vertices need to be added to the partially grown graph*)
+	    FrontMatrix[[1,k]]=1;
+	    ,{k,NNlist}];
+	   
+	  ,
+	  (*vertex scanned by depth of scan will definitely be a member of the frontier...i hope*)   
+	  NNlist={};
+          (*we need to know which vertex, amongst the added vertices, to add to*)
+	  (*it is easy to figure this out by searching for the "1" in the column of the frontier matrix*)
+	  
+	  (*grab the column corresponding to the vertex index*)	    
+	  Col=Take[FrontMatrix,All,{VertIndex}];
+	  (*vertex stem is the number/position of where the vertex should be added, you can get its coordinates from PolyCoors*)	
+          VertStem=Position[Col,{1}][[1,1]];
+	  (*get position of vertex stem in polycoors*)
+	  VertStemPos=Position[PolyCoors,VertStem][[1,1]];
+	  (*get the vertex coordinate corresponding to the VertStem*)
+	  LastVertCoor=PolyCoors[[VertStemPos,1]];
+          (*calculate list of weights*)
+	  LOW=ListOfWeights[LastVertCoor,PolyCoors,f,epsilon];
+	  (*check if LOW has a 0 in every position, this means the polymer got stuck*)
+	  If[Total[N[LOW]] == 0,
+		(*got stuck*)
+		(*return empty polycoors and 0 for rosenbluth factor*)
+		PolyCoors={};
+		RBFactor=0;
+		Throw[2];
+		(*Return[{PolyCoors,RBFactor}];*)
+	     ];
+	  
+	   (*select an outcome: specify posn and occupancy state*)
+	   PosnState=ConfigSelect[LOW];
+
+	  (*at this point we can add a new coordinate and occupancy to PolyCoors, as well as update NumOcc,
+	   NumUnOcc*)
+	  GrowList=Grow[PolyCoors,PosnState,VertIndex,LastVertCoor,LOW,RBFactor,f];
+
+	  (*update polymer coordinates*)
+	  PolyCoors=GrowList[[1]];
+	(*the vertex has been added, so we will need to update the Frontier matrix*)
+	(*FrontMatrix[[VertStem,VertIndex]]=0;*)
+	(*now get the frontier vertices for the vertex we just added*)
+	(*only update the matrix if there are frontier vertices to add*)
+	NNlist=Frontier[rnaasgraph,PolyCoors,VertIndex];
+     	If[ Length[NNlist] > 0,
+		Do[
+		FrontMatrix[[VertIndex,k]]=1;
+	 	,{k,NNlist}];
+       	   ];
+	
+	(*update rosenbluth factor*)
+	RBFactor=GrowList[[3]];
+	(*update energy*)
+	DelE=GrowList[[4]];
+	Energy=Energy+DelE;
+	(*update NumOcc, NumUnOcc*)
+	grablist=GrabSites[NumOcc,NumUnOcc,PosnState];
+	NumOcc=grablist[[1]];
+	NumUnOcc=grablist[[2]];
+	(*update fraction of occupied sites*)   
+	If[ (NumOcc+NumUnOcc) != 0,
+	f=N[NumOcc/(NumOcc+NumUnOcc)];
+   	  ];
+
+	  ];
+
+	&)}];];
+
+(*If[Result == 2,
+      Print[{cp,numsites}];
+  ];*)
+
+If[RBFactor != 0,
+PutAppend[PolyCoors,StringJoin["RAWPolyCoors_",ToString[cp],"_",ToString[numsites],".txt"]];
+PutAppend[Rg[PolyCoors],StringJoin["radiusgyration_",ToString[cp],"_",ToString[numsites],".txt"]];
+PutAppend[RBFactor,StringJoin["RAWRBFactor_",ToString[cp],"_",ToString[numsites],".txt"]];
+PutAppend[Energy,StringJoin["RAWEnergy_",ToString[cp],"_",ToString[numsites],".txt"]];
+(*increment i*)
+i=i+1;
+  ];
+
+
+  ];
+
+(*,{cp,1,numsites}];*)
+
+Exit[]

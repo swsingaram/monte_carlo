@@ -1,0 +1,113 @@
+Needs["MonteCarlo`","/usr/people/abs/singaram/scripts/mathematica/packages/MC.m"];
+Needs["GraphUtilities`"];
+
+(*Make 3200nt RNA from two T=3 capsids*)
+
+t3dimerlist=Import["/usr/people/abs/singaram/data/t3_capsid/t3dimer.list"];
+t3dimergraph1=Graph[t3dimerlist];
+t3dimergraph2=Graph[t3dimerlist];
+(*number of sites on RNA*)
+numsites=160;
+numxs=180-numsites;
+t3dimergraph1=StaggerGraph[t3dimergraph1,90];
+dimergraph160=GraphUnion[t3dimergraph2,t3dimergraph1];
+dimergraph160=StaggerGraph[dimergraph160,120];
+(*make the 3200 nt guy*)
+dimergraph160=RNAGraph[dimergraph160,{},{},numxs][[1]];
+occsites160={};
+
+
+(*Make 1500nt RNA from two T=2 capsids*)
+t2dimerlist=Import["/usr/people/abs/singaram/data/t2_capsid/t2dimer.list"];
+t2dimergraph1=Graph[t2dimerlist];
+t2dimergraph2=Graph[t2dimerlist];
+(*number of sites on RNA*)
+numsites=75;
+t2dimergraph2=StaggerGraph[t2dimergraph2,60];
+dimergraph75=GraphUnion[t2dimergraph1,t2dimergraph2];
+
+(*now make the 1500 nt guy,two T =2 because it forms a T=2*)
+numxs=120-numsites;
+dimergraph75=RNAGraph[dimergraph75,{},{},numxs][[1]];
+occsites75={};
+
+
+(**********************
+***********************
+**********************
+INPUT CONSTANTS
+
+*******************
+*******************
+*******************)
+epsilon=-2;
+energy=0;
+numprot1=80;
+numprot2=0;
+nummoves=100;
+numhops=1000;
+numjumps=10000;
+
+Do[
+addlist=MCAddGraph[dimergraph160,occsites160,epsilon,energy];
+occsites160=addlist[[2]];
+energy=addlist[[3]];
+
+	Do[
+	movelist=MCMoveGraph[dimergraph160,occsites160,epsilon,energy];
+	occsites160=movelist[[2]];
+	energy=movelist[[3]];
+	,{j,1,nummoves}];
+,{i,1,numprot1}];
+
+Do[
+
+hoplist=MCHopGraph[dimergraph160,occsites160,epsilon,energy];
+occsites160=hoplist[[2]];
+energy=hoplist[[3]];
+,{i,1,numhops}];
+
+
+Do[
+
+addlist=MCAddGraph[dimergraph75,occsites75,epsilon,energy];
+occsites75=addlist[[2]];
+energy=addlist[[3]];
+
+
+movelist=MCMoveGraph[dimergraph75,occsites75,epsilon,energy];
+occsites75=movelist[[2]];
+energy=movelist[[3]];
+
+,{i,1,numprot2}];
+
+Do[
+
+hoplist=MCHopGraph[dimergraph75,occsites75,epsilon,energy];
+occsites75=hoplist[[2]];
+energy=hoplist[[3]];
+,{i,1,numhops}];
+
+Export[StringJoin[ToString[75initial],".pdf"],HighlightGraph[dimergraph75,Subgraph[dimergraph75,occsites75],GraphLayout->"SpringElectricalEmbedding"]];
+Export[StringJoin[ToString[160initial],".pdf"],HighlightGraph[dimergraph160,Subgraph[dimergraph160,occsites160],GraphLayout->"SpringElectricalEmbedding"]];
+Do[
+
+movelist=MCMoveGraph[dimergraph160,occsites160,epsilon,energy];
+occsites160=movelist[[2]];
+energy=movelist[[3]];
+
+movelist=MCMoveGraph[dimergraph75,occsites75,epsilon,energy];
+occsites75=movelist[[2]];
+energy=movelist[[3]];
+
+jumplist=MCJumpGraph[dimergraph75,occsites75,dimergraph160,occsites160,epsilon,energy];
+
+occsites160=jumplist[[4]];
+occsites75=jumplist[[2]];
+
+,{j,1,numjumps}];
+
+Export[StringJoin[ToString[75final],".pdf"],HighlightGraph[dimergraph75,Subgraph[dimergraph75,occsites75],GraphLayout->"SpringElectricalEmbedding"]];
+Export[StringJoin[ToString[160final],".pdf"],HighlightGraph[dimergraph160,Subgraph[dimergraph160,occsites160],GraphLayout->"SpringElectricalEmbedding"]];
+
+Exit[]

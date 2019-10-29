@@ -1,0 +1,29 @@
+Needs["MonteCarlo`","~/scripts/mathematica/packages/MC_GraphTetraValent.m"];
+Needs["GraphUtilities`"];
+adjmat = Import["~/CCMVRNA1a.lap","Table"];
+adjgraph = AdjacencyGraph[adjmat];
+list = {};
+occlist = {};
+(*Do[*)
+tmp1 := MCGraphTetraValent[adjmat,90,{},2,2,-5][[1]];
+list = tmp1;
+
+tmp2 := MCGraphTetraValent[adjmat,90,{},2,2,-5][[2]];
+occsites =tmp2;
+
+(*occlist = AppendTo[occlist,list];*)
+
+(*,{j,1,69}];*)
+Print["Starting graphical computation"];
+edgelist=EdgeList[AdjacencyGraph[list]];
+
+dimergraph=Graph[occsites,edgelist];
+
+Export["~/test.pdf",dimergraph];
+(*Do[
+occfilename = StringJoin["~/",ToString[j],"_occsites.pdf"];
+Export[occfilename,HighlightGraph[adjgraph,Subgraph[adjgraph,occlist[[j]]]]];
+Print[j];
+,{j,1,69}];*)
+
+Exit[]

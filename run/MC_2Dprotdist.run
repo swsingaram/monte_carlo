@@ -1,0 +1,59 @@
+Needs["MonteCarlo`","~/scripts/mathematica/packages/MC.m"];
+(*50% sites defective*)
+epsilonRNA2=-5;
+epsilonRNA1=-5;
+numsteps=100;
+numjumps=100;
+
+rnamat1={{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+
+Energy = 0;
+Do[
+AddedParticleList = MC2DAddParticle[rnamat1,epsilonRNA1,Energy];
+(*a particle has been added to rnamat2*)
+rnamat1=AddedParticleList[[1]];
+Energy=AddedParticleList[[2]];
+
+(*TranslateStepList = MC2DTranslate[rnamat1,numsteps,epsilonRNA1,Energy];
+
+rnamat1=TranslateStepList[[1]];
+Energy=TranslateStepList[[2]];*)
+
+
+,{particlenum,1,90}];
+
+rnamatensemble={};
+Do[
+rnamatensemble=Append[rnamatensemble,rnamat1];
+,{i,1,1000}];
+
+Do[
+(*Now start switching*)
+(*random integer 1*)
+r1=RandomInteger[{1,1000}];
+r2=r1;
+	While[r2 == r1,
+ 	r2=RandomInteger[{1,1000}];
+	];
+
+tmpmat1=rnamatensemble[[r1]];
+tmpmat2=rnamatensemble[[r2]];
+
+JumpStepList = MC2DJump[tmpmat1,tmpmat2,epsilonRNA1,epsilonRNA2,Energy];
+
+rnamatensemble[[r1]]=JumpStepList[[1]];
+rnamatensemble[[r2]]=JumpStepList[[2]];
+Energy=JumpStepList[[3]];
+
+If[ Mod[i,10000] == 0,
+      PutAppend[rnamatensemble,"rnamatensemble.dat"];
+      PutAppend[Energy,"energyensemble.dat"];
+  ]; 
+
+,{i,1,10000000}]
+
+
+
+Exit[]
+
+
